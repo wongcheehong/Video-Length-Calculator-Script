@@ -7,5 +7,6 @@ This repo contains script that calculate video length. Each script have differen
 3. videoDurationSum.py : sum up all the video length in current directory.
 
 # Script usage:
-1. Copy the [ffprobe](https://ffbinaries.com/downloads) and one of the script to the directory you wish you perform the operation.
-2. python <script_name>.py
+1. `pip install pymediainfo colorama`
+2. Copy the script to desired directory.
+3. `python <script_name>.py`
