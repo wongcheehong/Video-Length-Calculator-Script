@@ -1,31 +1,37 @@
 import os
-import subprocess
-import sys
 import re
+from pymediainfo import MediaInfo
 
 
-_nsre = re.compile('([0-9]+)')
+def get_video_duration(video_path):
+    clip_info = MediaInfo.parse(video_path)
+    duration_seconds = clip_info.tracks[0].duration / 1000
+
+    return duration_seconds
+
+
 def natural_sort_key(s):
+    _nsre = re.compile('([0-9]+)')
     return [int(text) if text.isdigit() else text.lower()
             for text in re.split(_nsre, s)]
-
-
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-
-    return os.path.join(base_path, relative_path)
 
 
 def format_duration(duration):
     hours = int(duration / 3600)
     minutes = int((duration - hours * 3600) / 60)
     seconds = int(duration - hours * 3600 - minutes * 60)
-    return f"{hours}h{minutes}m{seconds}s"
+
+    message = ""
+    if hours > 0:
+        message += str(hours) + "h "
+    if minutes > 0:
+        message += str(minutes) + "m "
+    if seconds > 0:
+        message += str(seconds) + "s"
+    if not message:
+        message = "0s"
+
+    return message
 
 
 def videoDurationInThisPath(path):
@@ -37,10 +43,7 @@ def videoDurationInThisPath(path):
     durationList = []
     for video in videoList:
         video_path = os.path.join(path, video)
-        duration = subprocess.Popen([resource_path('ffprobe'), '-v', 'error', '-show_entries', 'format=duration', '-of',
-                                     'default=noprint_wrappers=1:nokey=1', video_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        duration = duration.stdout.read().decode('utf-8')
-        duration = float(duration)
+        duration = get_video_duration(video_path)
         durationList.append(duration)
     # Sum up the duration of all the video files
     durationSum = sum(durationList)

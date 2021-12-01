@@ -1,17 +1,41 @@
 import os
-import subprocess
-import sys
+import re
+from colorama import init
+from colorama import Fore
+from pymediainfo import MediaInfo
+
+init(autoreset=True)
 
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+def natural_sort_key(s):
+    _nsre = re.compile('([0-9]+)')
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split(_nsre, s)]
 
-    return os.path.join(base_path, relative_path)
+
+def get_video_duration(video_path):
+    clip_info = MediaInfo.parse(video_path)
+    duration_seconds = clip_info.tracks[0].duration / 1000
+
+    return duration_seconds
+
+
+def format_duration(duration):
+    hours = int(duration / 3600)
+    minutes = int((duration - hours * 3600) / 60)
+    seconds = int(duration - hours * 3600 - minutes * 60)
+
+    message = ""
+    if hours > 0:
+        message += str(hours) + "h "
+    if minutes > 0:
+        message += str(minutes) + "m "
+    if seconds > 0:
+        message += str(seconds) + "s"
+    if not message:
+        message = "0s"
+
+    return message
 
 
 # Sum up all the video duration in current directory
@@ -25,29 +49,19 @@ def videoDurationSum():
     for file in fileList:
         if file.endswith('.mp4'):
             videoList.append(file)
+    videoList.sort(key=natural_sort_key)
     # Get the duration of each video file
-    durationList = []
-    for video in videoList:
-        duration = subprocess.Popen([resource_path('ffprobe'), '-v', 'error', '-show_entries', 'format=duration', '-of',
-                                    'default=noprint_wrappers=1:nokey=1', video], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        duration = duration.stdout.read().decode('utf-8')
-        duration = float(duration)
-        durationList.append(duration)
-    # Sum up the duration of all the video files
     durationSum = 0
-    for duration in durationList:
+    for video in videoList:
+        duration = get_video_duration(video)
         durationSum += duration
+        print(f"{Fore.GREEN}{video}: {Fore.YELLOW}{format_duration(duration)} {Fore.RESET}(Cumulative Sum: {Fore.CYAN}{format_duration(durationSum)}{Fore.RESET})")
     # Return the duration sum
     return durationSum
 
 
 duration_in_seconds = videoDurationSum()
-# Convert the duration to hours, minutes and seconds
-hours = int(duration_in_seconds / 3600)
-minutes = int((duration_in_seconds - hours * 3600) / 60)
-seconds = int(duration_in_seconds - hours * 3600 - minutes * 60)
 # Print the duration
-print('The duration of all the videos in the current directory is:')
-print(str(hours) + ' hours ' + str(minutes) +
-      ' minutes ' + str(seconds) + ' seconds')
+print('\nThe duration of all the videos in the current directory is: ' + Fore.GREEN +
+      format_duration(duration_in_seconds))
 input("Enter any key to exit")

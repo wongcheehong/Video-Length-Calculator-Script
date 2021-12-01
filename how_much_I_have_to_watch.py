@@ -1,23 +1,18 @@
 import os
-import subprocess
-import sys
 import re
 from colorama import init
-from colorama import Fore, Back
+from colorama import Fore
+from pymediainfo import MediaInfo
 
 
 init(autoreset=True)
 
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
+def get_video_duration(video_path):
+    clip_info = MediaInfo.parse(video_path)
+    duration_seconds = clip_info.tracks[0].duration / 1000
 
-    return os.path.join(base_path, relative_path)
+    return duration_seconds
 
 
 def natural_sort_key(s):
@@ -30,7 +25,18 @@ def format_duration(duration):
     hours = int(duration / 3600)
     minutes = int((duration - hours * 3600) / 60)
     seconds = int(duration - hours * 3600 - minutes * 60)
-    return f"{hours}h{minutes}m{seconds}s"
+
+    message = ""
+    if hours > 0:
+        message += str(hours) + "h "
+    if minutes > 0:
+        message += str(minutes) + "m "
+    if seconds > 0:
+        message += str(seconds) + "s"
+    if not message:
+        message = "0s"
+
+    return message
 
 
 def watch_until_which_video(need_to_watch, start_folder="", start_video=""):
@@ -68,10 +74,8 @@ def watch_until_which_video(need_to_watch, start_folder="", start_video=""):
             run_only_once = False
         for video in video_list:
             video_path = os.path.join(subdir, video)
-            duration = subprocess.Popen([resource_path('ffprobe'), '-v', 'error', '-show_entries', 'format=duration', '-of',
-                                        'default=noprint_wrappers=1:nokey=1', video_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            duration = duration.stdout.read().decode('utf-8')
-            duration_sum += float(duration)
+            duration = get_video_duration(video_path)
+            duration_sum += duration
             if duration_sum >= need_to_watch:
                 watch_until_folder = os.path.relpath(subdir, current_dir)
                 print("Watch until this folder > " +
